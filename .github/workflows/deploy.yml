@@ -5,10 +5,16 @@ on:
     branches:
       - main
 
+# GitHub Pages 배포에 필요한 필수 권한 명시
 permissions:
   contents: read
   pages: write
   id-token: write
+
+# 중복 실행 방지
+concurrency:
+  group: 'pages'
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -20,13 +26,13 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 깃허브에 저장된 Secret 키로 __API_KEY__ 문자열을 교체
+      # Secret 키 주입 (구분자로 '#' 사용하여 특수문자 충돌 방지)
       - name: Inject API Key
         run: |
-          sed -i 's/__API_KEY__/${{ secrets.GIMPO_API_KEY }}/g' index.html
+          sed -i 's#__API_KEY__#${{ secrets.GIMPO_API_KEY }}#g' index.html
 
       - name: Setup Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v5
 
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
