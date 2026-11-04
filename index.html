@@ -2,26 +2,30 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <!-- iOS 노치 대응 및 확대 방지 뷰포트 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
-    <!-- iOS 웹앱(PWA) 전용 메타 태그 -->
+    <!-- iOS PWA 설정 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="김포공항 주차">
-    <meta name="theme-color" content="#2c3e50">
+    <meta name="apple-mobile-web-app-title" content="공항 주차 현황">
+    <meta name="theme-color" content="#1e293b">
 
-    <title>김포공항 국제선 실시간 주차</title>
+    <title>수도권 공항 실시간 주차현황</title>
     <style>
         :root {
-            --vacant-color: #2ecc71;
-            --vacant-bg: #eafaf1;
-            --occupied-color: #e74c3c;
-            --occupied-bg: #fdedec;
-            --primary: #2c3e50;
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --primary: #0f172a;
+            --text-sub: #64748b;
+            --border: #e2e8f0;
+            --green: #10b981;
+            --green-bg: #ecfdf5;
+            --amber: #f59e0b;
+            --amber-bg: #fffbeb;
+            --red: #ef4444;
+            --red-bg: #fef2f2;
         }
 
-        /* iOS 기본 터치 하이라이트 제거 및 박스 사이징 */
         * {
             box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
@@ -30,12 +34,11 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard', sans-serif;
             margin: 0;
-            padding: 15px;
-            /* iOS 상하단 안전영역(Safe Area) 패딩 */
-            padding-top: calc(env(safe-area-inset-top) + 15px);
+            padding: 12px;
+            padding-top: calc(env(safe-area-inset-top) + 12px);
             padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
-            background: #f4f6f9;
-            color: #333;
+            background: var(--bg-color);
+            color: #1e293b;
             -webkit-text-size-adjust: 100%;
         }
 
@@ -44,403 +47,482 @@
             margin: 0 auto;
         }
 
-        /* 헤더 */
+        /* 상단 헤더 */
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 2px solid #ddd;
-            padding-bottom: 12px;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
+            background: white;
+            padding: 12px 14px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
         }
-        .header h2 {
+        .header h1 {
             margin: 0;
-            font-size: 19px;
+            font-size: 18px;
+            font-weight: 800;
             color: var(--primary);
             letter-spacing: -0.5px;
         }
-        .btn {
-            padding: 9px 14px;
-            background: #3498db;
+        .update-badge {
+            font-size: 11px;
+            color: var(--text-sub);
+            margin-top: 2px;
+            display: block;
+        }
+        .refresh-btn {
+            background: #2563eb;
             color: white;
             border: none;
+            padding: 8px 12px;
             border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
             cursor: pointer;
-            font-weight: bold;
-            font-size: 13px;
             touch-action: manipulation;
         }
-        .btn:active {
-            background: #2980b9;
+        .refresh-btn:active {
+            opacity: 0.8;
             transform: scale(0.97);
         }
 
-        /* 컨트롤 패널: 모바일 가로 스크롤 및 배치 */
-        .control-panel {
-            background: white;
-            padding: 12px 15px;
-            border-radius: 12px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
-            margin-bottom: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .tabs {
-            display: flex;
-            gap: 6px;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            padding-bottom: 2px;
-        }
-        .tabs::-webkit-scrollbar { display: none; } /* 스크롤바 숨김 */
-
-        .tab-btn {
-            white-space: nowrap;
-            padding: 8px 14px;
-            border: 1px solid #ddd;
-            background: #fff;
-            border-radius: 18px;
-            font-weight: 600;
-            font-size: 13px;
-            color: #555;
-            touch-action: manipulation;
-        }
-        .tab-btn.active {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
-        }
-
-        .filter-group {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-        }
-        .toggle-label {
-            font-size: 13px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            cursor: pointer;
-        }
-        /* iOS input 포커스 시 자동 확대 방지를 위해 font-size 16px 지정 */
-        .search-input {
-            padding: 8px 12px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            font-size: 16px;
-            width: 140px;
-            outline: none;
-        }
-
-        /* 통계 요약 카드 */
-        .summary-bar {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        .summary-card {
-            flex: 1;
-            background: white;
-            padding: 12px 15px;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 13px;
-        }
-        .card-green { border-left: 4px solid var(--vacant-color); color: #27ae60; }
-        .card-red { border-left: 4px solid var(--occupied-color); color: #c0392b; }
-        .card-num { font-size: 20px; margin-top: 4px; }
-
-        /* 주차 구획 뷰어 */
-        .floor-section {
-            background: white;
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
-        }
-        .floor-header {
-            font-size: 15px;
-            font-weight: bold;
-            color: #2c3e50;
-            border-bottom: 1.5px solid #edf2f7;
-            padding-bottom: 10px;
-            margin-bottom: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        /* 모바일 최적화 그리드 */
-        .grid-container {
+        /* 기본: 3열 그리드 */
+        .dashboard-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            align-items: start;
+        }
+
+        /* 공항별 컬럼 패널 */
+        .airport-col {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px;
+        }
+        .airport-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: #1e293b;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .airport-title small {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-sub);
+        }
+
+        /* 주차장 카드 */
+        .card-list {
+            display: flex;
+            flex-direction: column;
             gap: 8px;
         }
-
-        .slot {
-            padding: 8px 4px;
-            border-radius: 6px;
-            text-align: center;
-            font-size: 11px;
-            font-weight: bold;
-            touch-action: manipulation;
+        .parking-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
         }
-        .slot.vacant { background-color: var(--vacant-bg); border: 1.5px solid var(--vacant-color); color: #1e8449; }
-        .slot.occupied { background-color: var(--occupied-bg); border: 1.5px solid #f5b7b1; color: #922b21; }
-        
-        .slot-name { font-size: 12px; margin-bottom: 2px; }
-        .slot-tag { font-size: 9px; display: inline-block; padding: 2px 4px; border-radius: 3px; }
-        .slot.vacant .slot-tag { background: #d4efdf; color: #1e8449; }
-        .slot.occupied .slot-tag { background: #fadbd8; color: #922b21; }
-        .type-handicap { border-style: dashed !important; }
+        .card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .parking-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .status-pill {
+            padding: 2px 7px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+        .status-green { background: var(--green-bg); color: #047857; }
+        .status-amber { background: var(--amber-bg); color: #b45309; }
+        .status-red { background: var(--red-bg); color: #b91c1c; }
+
+        .card-stats {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+        .stat-avail {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--primary);
+            letter-spacing: -0.5px;
+        }
+        .stat-avail small {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-sub);
+            margin-left: 2px;
+        }
+        .stat-total {
+            font-size: 11px;
+            color: var(--text-sub);
+            font-weight: 600;
+        }
+
+        /* 게이지 그래프 */
+        .progress-bar-bg {
+            height: 6px;
+            background: #f1f5f9;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.4s ease;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 25px 5px;
+            color: var(--text-sub);
+            font-size: 12px;
+        }
+
+        /* ★ 모바일 세로 모드 및 좁은 화면(폭 768px 이하) 최적화 */
+        @media (max-width: 768px) {
+            body {
+                padding: 6px;
+                padding-top: calc(env(safe-area-inset-top) + 6px);
+            }
+            .header {
+                padding: 8px 10px;
+                margin-bottom: 8px;
+            }
+            .header h1 {
+                font-size: 15px;
+            }
+            /* 3열 유지 + 간격 최소화 */
+            .dashboard-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 5px;
+            }
+            .airport-col {
+                padding: 6px 4px;
+                border-radius: 8px;
+            }
+            .airport-title {
+                font-size: 11px;
+                margin-bottom: 6px;
+                padding-bottom: 4px;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 2px;
+            }
+            .airport-title small {
+                font-size: 10px;
+            }
+            .card-list {
+                gap: 6px;
+            }
+            .parking-card {
+                padding: 8px 6px;
+                border-radius: 8px;
+            }
+            .card-top {
+                margin-bottom: 4px;
+            }
+            .parking-name {
+                font-size: 11px;
+            }
+            .status-pill {
+                padding: 1px 4px;
+                font-size: 9px;
+            }
+            .card-stats {
+                margin-bottom: 0;
+            }
+            .stat-avail {
+                font-size: 17px;
+            }
+            .stat-avail small {
+                font-size: 10px;
+            }
+
+            /* ★ 핵심: 좁은 화면에서는 프로그레스 바와 전체 대수 텍스트 숨김 */
+            .progress-bar-bg,
+            .stat-total {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header">
-        <h2>🚗 김포국제공항 주차 현황</h2>
-        <button id="refreshBtn" class="btn">🔄 새로고침</button>
+        <div>
+            <h1>✈️ 공항 실시간 주차</h1>
+            <span id="updateTimeBadge" class="update-badge">동기화 대기 중...</span>
+        </div>
+        <button id="refreshBtn" class="refresh-btn">🔄</button>
     </div>
 
-    <!-- 컨트롤러 -->
-    <div class="control-panel">
-        <div id="floorTabs" class="tabs"></div>
-        <div class="filter-group">
-            <label class="toggle-label">
-                <!-- 기본값: 빈 자리만 보기 활성화 -->
-                <input type="checkbox" id="onlyVacantToggle" checked> 🟢 빈자리만
-            </label>
-            <input type="text" id="searchInput" class="search-input" placeholder="구획 번호">
+    <!-- 3열 그리드 (세로 모드에서도 3열 유지) -->
+    <div class="dashboard-grid">
+        <!-- 1. 김포공항 -->
+        <div class="airport-col">
+            <div class="airport-title">
+                <span>🛫 김포 (GMP)</span>
+                <small id="gmpSummary"></small>
+            </div>
+            <div id="gmpCards" class="card-list">
+                <div class="empty-state">조회 중...</div>
+            </div>
+        </div>
+
+        <!-- 2. 인천공항 T1 -->
+        <div class="airport-col">
+            <div class="airport-title">
+                <span>🌐 인천 T1</span>
+                <small id="icnT1Summary"></small>
+            </div>
+            <div id="icnT1Cards" class="card-list">
+                <div class="empty-state">조회 중...</div>
+            </div>
+        </div>
+
+        <!-- 3. 인천공항 T2 -->
+        <div class="airport-col">
+            <div class="airport-title">
+                <span>🌐 인천 T2</span>
+                <small id="icnT2Summary"></small>
+            </div>
+            <div id="icnT2Cards" class="card-list">
+                <div class="empty-state">조회 중...</div>
+            </div>
         </div>
     </div>
-
-    <!-- 통계 요약 -->
-    <div class="summary-bar">
-        <div class="summary-card card-green">
-            <span>주차 가능</span>
-            <span id="vacantCount" class="card-num">0면</span>
-        </div>
-        <div class="summary-card card-red">
-            <span>주차 중</span>
-            <span id="occupiedCount" class="card-num">0면</span>
-        </div>
-    </div>
-
-    <!-- 주차 맵 -->
-    <div id="parkingView"></div>
 </div>
 
 <script>
-    const PUBLIC_API_KEY = '__API_KEY__'; 
-    let rawDataList = [];
-    // 기본 선택 층: 지하 01층
-    let currentSelectedFloor = '지하 01층';
+    const PUBLIC_API_KEY = '__API_KEY__';
     let autoRefreshTimer = null;
 
-    async function fetchGimpoParkingData() {
-        const view = document.getElementById('parkingView');
-        const refreshBtn = document.getElementById('refreshBtn');
-        if (refreshBtn) refreshBtn.innerText = '⏳';
-
-        const pageSize = 100;
-        let pageNo = 1;
-        let tempItems = [];
-        let totalCount = 0;
-        const timestamp = Date.now();
-
+    // 1. 김포공항 데이터 호출
+    async function fetchGmpData() {
         try {
-            while (true) {
-                const requestUrl = `https://apis.data.go.kr/B551178/parking-available-spaces/gmp-int-indoor?serviceKey=${PUBLIC_API_KEY}&pageNo=${pageNo}&numOfRows=${pageSize}&type=json&_t=${timestamp}`;
-                
-                const response = await fetch(requestUrl, {
-                    cache: 'no-store',
-                    headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
-                });
+            const url = `https://apis.data.go.kr/B551178/parking-realtime-status/info?serviceKey=${PUBLIC_API_KEY}&airportCode=GMP&type=json&_t=${Date.now()}`;
+            const res = await fetch(url, { cache: 'no-store' });
+            if (!res.ok) throw new Error(`GMP HTTP ${res.status}`);
+            
+            const data = await res.json();
+            const items = data.response?.body?.items?.item || [];
+            const rawList = Array.isArray(items) ? items : [items];
 
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return rawList.map(item => {
+                const name = item.parkingAirportCodeName || '주차장';
+                const total = parseInt(item.parkingFullSpace, 10) || 0;
+                const stay = parseInt(item.parkingIstay, 10) || 0;
+                const avail = Math.max(0, total - stay);
 
-                const data = await response.json();
-                const body = data.response?.body;
-                if (!body) break;
+                return {
+                    parkingName: name,
+                    total: total,
+                    available: avail,
+                    occupied: stay
+                };
+            });
+        } catch (err) {
+            console.error('김포공항 수신 에러:', err);
+            return [];
+        }
+    }
 
-                if (pageNo === 1) totalCount = body.totalCount || 0;
+    // 인천공항 구역명 간소화 함수 (중복 단어 및 접두어 제거)
+    function cleanIcnParkingName(name) {
+        if (!name) return '주차구역';
+        
+        let cleaned = name;
 
-                const rawItems = body.items?.item;
-                if (rawItems) {
-                    if (Array.isArray(rawItems)) tempItems = tempItems.concat(rawItems);
-                    else if (typeof rawItems === 'object') tempItems.push(rawItems);
-                }
+        // 1) 컬럼 헤더에 이미 T1/T2가 있으므로 T1, T2 접두어 제거
+        cleaned = cleaned.replace(/T[12]/gi, '');
+        cleaned = cleaned.replace(/제[12](여객)?터미널/g, '');
 
-                if ((totalCount > 0 && tempItems.length >= totalCount) || !rawItems) break;
-                if (totalCount > 0 && pageNo >= Math.ceil(totalCount / pageSize)) break;
-                pageNo++;
-            }
+        // 2) 자리를 많이 차지하는 '단기주차장', '장기주차장', '주차장' 제거
+        cleaned = cleaned.replace(/단기주차장/g, '단기 ');
+        cleaned = cleaned.replace(/장기주차장/g, '장기 ');
+        cleaned = cleaned.replace(/주차장/g, '');
 
-            // 고유 식별자 중복 제거
-            const uniqueMap = new Map();
-            tempItems.forEach(item => {
-                const uniqueKey = item.cellName ? `${item.levelName}_${item.cellName}` : String(item.cellId);
-                uniqueMap.set(uniqueKey, item);
+        // 3) 앞뒤 공백 및 중복 공백 정리
+        cleaned = cleaned.trim().replace(/\s+/g, ' ');
+
+        return cleaned || name;
+    }
+
+    // 2. 인천공항 데이터 호출 (정제 로직 적용)
+    async function fetchIcnData() {
+        try {
+            const url = `https://apis.data.go.kr/B551177/StatusOfParking/getTrackingParking?serviceKey=${PUBLIC_API_KEY}&numOfRows=50&pageNo=1&type=json&_t=${Date.now()}`;
+            const res = await fetch(url, { cache: 'no-store' });
+            if (!res.ok) throw new Error(`ICN HTTP ${res.status}`);
+            
+            const data = await res.json();
+            const items = data.response?.body?.items || [];
+            const rawList = Array.isArray(items) ? items : [items];
+
+            const parsedList = rawList.map(item => {
+                const rawName = item.floor || '주차구역';
+                const total = parseInt(item.parkingarea, 10) || 0;
+                const occ = parseInt(item.parking, 10) || 0;
+                const avail = Math.max(0, total - occ);
+
+                return {
+                    rawName: rawName,
+                    // ★ 화면 표시용 이름: 불필요한 단어를 뺀 핵심 층/위치명
+                    parkingName: cleanIcnParkingName(rawName),
+                    total: total,
+                    available: avail,
+                    occupied: occ
+                };
             });
 
-            rawDataList = Array.from(uniqueMap.values());
+            // T1과 T2 분리는 원본 이름(rawName) 기준으로 안전하게 판별
+            const t2List = parsedList.filter(item => {
+                const upper = item.rawName.toUpperCase();
+                return upper.includes('T2') || upper.includes('제2') || upper.includes('2터미널');
+            });
 
-            buildFloorTabs();
-            renderParkingMap();
+            const t1List = parsedList.filter(item => {
+                const upper = item.rawName.toUpperCase();
+                return !t2List.includes(item) && (upper.includes('T1') || upper.includes('제1') || upper.includes('1터미널'));
+            });
 
-            const now = new Date();
-            const timeStr = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
-            if (refreshBtn) refreshBtn.innerText = `🔄 ${timeStr}`;
-
+            return { t1List, t2List };
         } catch (err) {
-            console.error('Fetch error:', err);
-            if (refreshBtn) refreshBtn.innerText = '❌ 실패';
+            console.error('인천공항 수신 에러:', err);
+            return { t1List: [], t2List: [] };
         }
     }
 
-    function buildFloorTabs() {
-        const tabsContainer = document.getElementById('floorTabs');
-        const rawFloors = [...new Set(rawDataList.map(item => item.levelName || '기타층'))];
-        rawFloors.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-        const floors = ['전체', ...rawFloors];
-
-        tabsContainer.innerHTML = '';
-        floors.forEach(floor => {
-            const btn = document.createElement('button');
-            btn.className = `tab-btn ${floor === currentSelectedFloor ? 'active' : ''}`;
-            btn.innerText = floor;
-            btn.onclick = () => {
-                currentSelectedFloor = floor;
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                renderParkingMap();
-            };
-            tabsContainer.appendChild(btn);
-        });
+    // 김포공항 정렬: 국제선 지하 > 국제선 지상/빌딩 > 국내선
+    function getGmpSortScore(name) {
+        if (name.includes('국제선') && (name.includes('지하') || name.includes('실내'))) return 10;
+        if (name.includes('국제선') && (name.includes('빌딩') || name.includes('주차빌딩') || name.includes('지상'))) return 20;
+        if (name.includes('국제선')) return 30;
+        if (name.includes('국내선') && name.includes('1')) return 40;
+        if (name.includes('국내선') && name.includes('2')) return 50;
+        if (name.includes('국내선')) return 60;
+        return 99;
     }
 
-    function renderParkingMap() {
-        const view = document.getElementById('parkingView');
-        const onlyVacant = document.getElementById('onlyVacantToggle').checked;
-        const searchKeyword = document.getElementById('searchInput').value.trim();
+    // 인천공항 내부 층 정렬: 지하1층 > 지하2층 > 지상/단기
+    function getIcnInternalSortScore(name) {
+        if (name.includes('지하1층')) return 10;
+        if (name.includes('지하2층')) return 20;
+        if (name.includes('지하3층')) return 30;
+        if (name.includes('지상')) return 40;
+        if (name.includes('단기')) return 50;
+        return 99;
+    }
 
-        let baseList = rawDataList;
-        if (currentSelectedFloor !== '전체') {
-            baseList = baseList.filter(item => item.levelName === currentSelectedFloor);
+    // 데이터 로드
+    async function refreshAllData() {
+        const refreshBtn = document.getElementById('refreshBtn');
+        const badge = document.getElementById('updateTimeBadge');
+        if (refreshBtn) refreshBtn.innerText = '⏳';
+
+        const [gmpRes, icnRes] = await Promise.allSettled([fetchGmpData(), fetchIcnData()]);
+
+        let gmpDataList = [];
+        if (gmpRes.status === 'fulfilled' && gmpRes.value.length > 0) {
+            gmpDataList = gmpRes.value.sort((a, b) => getGmpSortScore(a.parkingName) - getGmpSortScore(b.parkingName));
         }
 
-        if (searchKeyword) {
-            baseList = baseList.filter(item => 
-                (item.cellName && item.cellName.includes(searchKeyword)) || 
-                String(item.cellId).includes(searchKeyword)
-            );
+        let icnT1List = [];
+        let icnT2List = [];
+        if (icnRes.status === 'fulfilled') {
+            icnT1List = (icnRes.value.t1List || []).sort((a, b) => getIcnInternalSortScore(a.parkingName) - getIcnInternalSortScore(b.parkingName));
+            icnT2List = (icnRes.value.t2List || []).sort((a, b) => getIcnInternalSortScore(a.parkingName) - getIcnInternalSortScore(b.parkingName));
         }
 
-        // 전체 빈자리 및 일반(장애인 제외) 빈자리 집계
-        const totalVacantSlots = baseList.filter(item => item.cellStatus === 'EMPTY');
-        const totalVacant = totalVacantSlots.length;
-        const totalVacantNormal = totalVacantSlots.filter(item => item.cellType !== 'HANDICAP').length;
-        const totalOccupied = baseList.filter(item => item.cellStatus !== 'EMPTY').length;
+        renderColumn('gmpCards', 'gmpSummary', gmpDataList);
+        renderColumn('icnT1Cards', 'icnT1Summary', icnT1List);
+        renderColumn('icnT2Cards', 'icnT2Summary', icnT2List);
 
-        // 상단 카운터 업데이트: 전체면수 (일반 N)
-        document.getElementById('vacantCount').innerHTML = `${totalVacant}면 <span style="font-size: 13px; font-weight: normal; color: #555;">(일반 ${totalVacantNormal})</span>`;
-        document.getElementById('occupiedCount').innerText = `${totalOccupied}면`;
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+        if (badge) badge.innerText = `동기화: ${timeStr}`;
+        if (refreshBtn) refreshBtn.innerText = '🔄';
+    }
 
-        const floorGroups = {};
-        baseList.forEach(slot => {
-            const floorName = slot.levelName || '지하층';
-            if (!floorGroups[floorName]) floorGroups[floorName] = [];
-            floorGroups[floorName].push(slot);
-        });
+    // 컬럼 렌더링
+    function renderColumn(containerId, summaryId, list) {
+        const container = document.getElementById(containerId);
+        const summary = document.getElementById(summaryId);
 
-        view.innerHTML = '';
-
-        const sortedFloorNames = Object.keys(floorGroups).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-
-        if (sortedFloorNames.length === 0) {
-            view.innerHTML = '<p style="text-align:center; padding: 40px; color:#888;">표시할 구획이 없습니다.</p>';
+        if (list.length === 0) {
+            container.innerHTML = '<div class="empty-state">데이터 없음</div>';
+            if (summary) summary.innerText = '';
             return;
         }
 
-        sortedFloorNames.forEach(floorName => {
-            const allFloorSlots = floorGroups[floorName];
-            const floorTotalCount = allFloorSlots.length;
+        const totalAvail = list.reduce((acc, cur) => acc + cur.available, 0);
+        if (summary) summary.innerText = `여유 ${totalAvail.toLocaleString()}대`;
+
+        container.innerHTML = list.map(item => {
+            const availRatio = item.total > 0 ? (item.available / item.total) * 100 : 0;
             
-            // 해당 층 빈자리 전체 및 일반(장애인 제외) 빈자리 수
-            const floorVacantSlots = allFloorSlots.filter(s => s.cellStatus === 'EMPTY');
-            const floorVacantCount = floorVacantSlots.length;
-            const floorVacantNormalCount = floorVacantSlots.filter(s => s.cellType !== 'HANDICAP').length;
+            let statusClass = 'status-green';
+            let statusText = '여유';
+            let barColor = 'var(--green)';
 
-            let displaySlots = allFloorSlots;
-            if (onlyVacant) {
-                displaySlots = displaySlots.filter(s => s.cellStatus === 'EMPTY');
+            if (item.available === 0 || availRatio <= 3) {
+                statusClass = 'status-red';
+                statusText = '만차';
+                barColor = 'var(--red)';
+            } else if (availRatio <= 15) {
+                statusClass = 'status-amber';
+                statusText = '혼잡';
+                barColor = 'var(--amber)';
             }
 
-            displaySlots.sort((a, b) => {
-                const numA = parseInt(String(a.cellName || a.cellId).replace(/[^0-9]/g, ''), 10) || 0;
-                const numB = parseInt(String(b.cellName || b.cellId).replace(/[^0-9]/g, ''), 10) || 0;
-                return numA - numB;
-            });
-
-            const section = document.createElement('div');
-            section.className = 'floor-section';
-            section.innerHTML = `
-                <div class="floor-header">
-                    <span>🏢 ${floorName}</span>
-                    <span style="font-size:12px; color:#27ae60;">
-                        여유: <b>${floorVacantCount}</b> / ${floorTotalCount}면 
-                        <span style="color:#555; font-weight:normal;">(일반 ${floorVacantNormalCount})</span>
-                    </span>
+            return `
+                <div class="parking-card">
+                    <div class="card-top">
+                        <span class="parking-name" title="${item.parkingName}">${item.parkingName}</span>
+                        <span class="status-pill ${statusClass}">${statusText}</span>
+                    </div>
+                    <div class="card-stats">
+                        <div class="stat-avail">${item.available.toLocaleString()}<small>대</small></div>
+                        <div class="stat-total">전체 ${item.total.toLocaleString()}대</div>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" style="width: ${Math.min(100, Math.max(0, availRatio))}%; background-color: ${barColor};"></div>
+                    </div>
                 </div>
-                <div class="grid-container"></div>
             `;
-
-            const grid = section.querySelector('.grid-container');
-
-            if (displaySlots.length === 0) {
-                grid.innerHTML = '<p style="grid-column: 1/-1; text-align:center; color:#999; padding:15px; font-size:12px;">빈 자리가 없습니다.</p>';
-            } else {
-                displaySlots.forEach(slot => {
-                    const box = document.createElement('div');
-                    const isVacant = (slot.cellStatus === 'EMPTY');
-                    const isHandicap = slot.cellType === 'HANDICAP';
-
-                    const spotName = slot.cellName ? slot.cellName.replace(floorName, '').trim() : `${slot.cellId}`;
-
-                    box.className = `slot ${isVacant ? 'vacant' : 'occupied'} ${isHandicap ? 'type-handicap' : ''}`;
-                    box.innerHTML = `
-                        <div class="slot-name">${spotName || slot.cellName}</div>
-                        <div class="slot-tag">${isVacant ? '주차가능' : '주차중'}</div>
-                        ${isHandicap ? '<div style="font-size:8px; color:#2980b9;">장애인</div>' : ''}
-                    `;
-                    grid.appendChild(box);
-                });
-            }
-
-            view.appendChild(section);
-        });
+        }).join('');
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('refreshBtn').addEventListener('click', fetchGimpoParkingData);
-        document.getElementById('onlyVacantToggle').addEventListener('change', renderParkingMap);
-        document.getElementById('searchInput').addEventListener('input', renderParkingMap);
+        document.getElementById('refreshBtn').addEventListener('click', refreshAllData);
+        refreshAllData();
 
-        fetchGimpoParkingData();
-
-        // 60초 주기 자동 새로고침
         if (autoRefreshTimer) clearInterval(autoRefreshTimer);
-        autoRefreshTimer = setInterval(fetchGimpoParkingData, 60000);
+        autoRefreshTimer = setInterval(refreshAllData, 60000);
     });
 </script>
 </body>
