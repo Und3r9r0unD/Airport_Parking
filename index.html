@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <!-- iOS 노치 대응 및 확대 방지 뷰포트 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <!-- iOS 웹앱(PWA) 전용 메타 태그 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="김포공항 주차">
+    <meta name="theme-color" content="#2c3e50">
+
+    <title>김포공항 국제선 실시간 주차</title>
+    <style>
+        :root {
+            --vacant-color: #2ecc71;
+            --vacant-bg: #eafaf1;
+            --occupied-color: #e74c3c;
+            --occupied-bg: #fdedec;
+            --primary: #2c3e50;
+        }
+
+        /* iOS 기본 터치 하이라이트 제거 및 박스 사이징 */
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard', sans-serif;
+            margin: 0;
+            padding: 15px;
+            /* iOS 상하단 안전영역(Safe Area) 패딩 */
+            padding-top: calc(env(safe-area-inset-top) + 15px);
+            padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
+            background: #f4f6f9;
+            color: #333;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* 헤더 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 12px;
+            margin-bottom: 15px;
+        }
+        .header h2 {
+            margin: 0;
+            font-size: 19px;
+            color: var(--primary);
+            letter-spacing: -0.5px;
+        }
+        .btn {
+            padding: 9px 14px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+            touch-action: manipulation;
+        }
+        .btn:active {
+            background: #2980b9;
+            transform: scale(0.97);
+        }
+
+        /* 컨트롤 패널: 모바일 가로 스크롤 및 배치 */
+        .control-panel {
+            background: white;
+            padding: 12px 15px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 2px;
+        }
+        .tabs::-webkit-scrollbar { display: none; } /* 스크롤바 숨김 */
+
+        .tab-btn {
+            white-space: nowrap;
+            padding: 8px 14px;
+            border: 1px solid #ddd;
+            background: #fff;
+            border-radius: 18px;
+            font-weight: 600;
+            font-size: 13px;
+            color: #555;
+            touch-action: manipulation;
+        }
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .filter-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+        .toggle-label {
+            font-size: 13px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+        /* iOS input 포커스 시 자동 확대 방지를 위해 font-size 16px 지정 */
+        .search-input {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+            width: 140px;
+            outline: none;
+        }
+
+        /* 통계 요약 카드 */
+        .summary-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .summary-card {
+            flex: 1;
+            background: white;
+            padding: 12px 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 13px;
+        }
+        .card-green { border-left: 4px solid var(--vacant-color); color: #27ae60; }
+        .card-red { border-left: 4px solid var(--occupied-color); color: #c0392b; }
+        .card-num { font-size: 20px; margin-top: 4px; }
+
+        /* 주차 구획 뷰어 */
+        .floor-section {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        }
+        .floor-header {
+            font-size: 15px;
+            font-weight: bold;
+            color: #2c3e50;
+            border-bottom: 1.5px solid #edf2f7;
+            padding-bottom: 10px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* 모바일 최적화 그리드 */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 8px;
+        }
+
+        .slot {
+            padding: 8px 4px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: bold;
+            touch-action: manipulation;
+        }
+        .slot.vacant { background-color: var(--vacant-bg); border: 1.5px solid var(--vacant-color); color: #1e8449; }
+        .slot.occupied { background-color: var(--occupied-bg); border: 1.5px solid #f5b7b1; color: #922b21; }
+        
+        .slot-name { font-size: 12px; margin-bottom: 2px; }
+        .slot-tag { font-size: 9px; display: inline-block; padding: 2px 4px; border-radius: 3px; }
+        .slot.vacant .slot-tag { background: #d4efdf; color: #1e8449; }
+        .slot.occupied .slot-tag { background: #fadbd8; color: #922b21; }
+        .type-handicap { border-style: dashed !important; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>🚗 김포국제공항 주차 현황</h2>
+        <button id="refreshBtn" class="btn">🔄 새로고침</button>
+    </div>
+
+    <!-- 컨트롤러 -->
+    <div class="control-panel">
+        <div id="floorTabs" class="tabs"></div>
+        <div class="filter-group">
+            <label class="toggle-label">
+                <!-- 기본값: 빈 자리만 보기 활성화 -->
+                <input type="checkbox" id="onlyVacantToggle" checked> 🟢 빈자리만
+            </label>
+            <input type="text" id="searchInput" class="search-input" placeholder="구획 번호">
+        </div>
+    </div>
+
+    <!-- 통계 요약 -->
+    <div class="summary-bar">
+        <div class="summary-card card-green">
+            <span>주차 가능</span>
+            <span id="vacantCount" class="card-num">0면</span>
+        </div>
+        <div class="summary-card card-red">
+            <span>주차 중</span>
+            <span id="occupiedCount" class="card-num">0면</span>
+        </div>
+    </div>
+
+    <!-- 주차 맵 -->
+    <div id="parkingView"></div>
+</div>
+
+<script>
+    const PUBLIC_API_KEY = '__API_KEY__'; 
+    let rawDataList = [];
+    // 기본 선택 층: 지하 01층
+    let currentSelectedFloor = '지하 01층';
+    let autoRefreshTimer = null;
+
+    async function fetchGimpoParkingData() {
+        const view = document.getElementById('parkingView');
+        const refreshBtn = document.getElementById('refreshBtn');
+        if (refreshBtn) refreshBtn.innerText = '⏳';
+
+        const pageSize = 100;
+        let pageNo = 1;
+        let tempItems = [];
+        let totalCount = 0;
+        const timestamp = Date.now();
+
+        try {
+            while (true) {
+                const requestUrl = `https://apis.data.go.kr/B551178/parking-available-spaces/gmp-int-indoor?serviceKey=${PUBLIC_API_KEY}&pageNo=${pageNo}&numOfRows=${pageSize}&type=json&_t=${timestamp}`;
+                
+                const response = await fetch(requestUrl, {
+                    cache: 'no-store',
+                    headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+                });
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const data = await response.json();
+                const body = data.response?.body;
+                if (!body) break;
+
+                if (pageNo === 1) totalCount = body.totalCount || 0;
+
+                const rawItems = body.items?.item;
+                if (rawItems) {
+                    if (Array.isArray(rawItems)) tempItems = tempItems.concat(rawItems);
+                    else if (typeof rawItems === 'object') tempItems.push(rawItems);
+                }
+
+                if ((totalCount > 0 && tempItems.length >= totalCount) || !rawItems) break;
+                if (totalCount > 0 && pageNo >= Math.ceil(totalCount / pageSize)) break;
+                pageNo++;
+            }
+
+            // 고유 식별자 중복 제거
+            const uniqueMap = new Map();
+            tempItems.forEach(item => {
+                const uniqueKey = item.cellName ? `${item.levelName}_${item.cellName}` : String(item.cellId);
+                uniqueMap.set(uniqueKey, item);
+            });
+
+            rawDataList = Array.from(uniqueMap.values());
+
+            buildFloorTabs();
+            renderParkingMap();
+
+            const now = new Date();
+            const timeStr = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+            if (refreshBtn) refreshBtn.innerText = `🔄 ${timeStr}`;
+
+        } catch (err) {
+            console.error('Fetch error:', err);
+            if (refreshBtn) refreshBtn.innerText = '❌ 실패';
+        }
+    }
+
+    function buildFloorTabs() {
+        const tabsContainer = document.getElementById('floorTabs');
+        const rawFloors = [...new Set(rawDataList.map(item => item.levelName || '기타층'))];
+        rawFloors.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        const floors = ['전체', ...rawFloors];
+
+        tabsContainer.innerHTML = '';
+        floors.forEach(floor => {
+            const btn = document.createElement('button');
+            btn.className = `tab-btn ${floor === currentSelectedFloor ? 'active' : ''}`;
+            btn.innerText = floor;
+            btn.onclick = () => {
+                currentSelectedFloor = floor;
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                renderParkingMap();
+            };
+            tabsContainer.appendChild(btn);
+        });
+    }
+
+    function renderParkingMap() {
+        const view = document.getElementById('parkingView');
+        const onlyVacant = document.getElementById('onlyVacantToggle').checked;
+        const searchKeyword = document.getElementById('searchInput').value.trim();
+
+        let baseList = rawDataList;
+        if (currentSelectedFloor !== '전체') {
+            baseList = baseList.filter(item => item.levelName === currentSelectedFloor);
+        }
+
+        if (searchKeyword) {
+            baseList = baseList.filter(item => 
+                (item.cellName && item.cellName.includes(searchKeyword)) || 
+                String(item.cellId).includes(searchKeyword)
+            );
+        }
+
+        const totalVacant = baseList.filter(item => item.cellStatus === 'EMPTY').length;
+        const totalOccupied = baseList.filter(item => item.cellStatus !== 'EMPTY').length;
+
+        document.getElementById('vacantCount').innerText = `${totalVacant}면`;
+        document.getElementById('occupiedCount').innerText = `${totalOccupied}면`;
+
+        const floorGroups = {};
+        baseList.forEach(slot => {
+            const floorName = slot.levelName || '지하층';
+            if (!floorGroups[floorName]) floorGroups[floorName] = [];
+            floorGroups[floorName].push(slot);
+        });
+
+        view.innerHTML = '';
+
+        const sortedFloorNames = Object.keys(floorGroups).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+        if (sortedFloorNames.length === 0) {
+            view.innerHTML = '<p style="text-align:center; padding: 40px; color:#888;">표시할 구획이 없습니다.</p>';
+            return;
+        }
+
+        sortedFloorNames.forEach(floorName => {
+            const allFloorSlots = floorGroups[floorName];
+            const floorTotalCount = allFloorSlots.length;
+            const floorVacantCount = allFloorSlots.filter(s => s.cellStatus === 'EMPTY').length;
+
+            let displaySlots = allFloorSlots;
+            if (onlyVacant) {
+                displaySlots = displaySlots.filter(s => s.cellStatus === 'EMPTY');
+            }
+
+            displaySlots.sort((a, b) => {
+                const numA = parseInt(String(a.cellName || a.cellId).replace(/[^0-9]/g, ''), 10) || 0;
+                const numB = parseInt(String(b.cellName || b.cellId).replace(/[^0-9]/g, ''), 10) || 0;
+                return numA - numB;
+            });
+
+            const section = document.createElement('div');
+            section.className = 'floor-section';
+            section.innerHTML = `
+                <div class="floor-header">
+                    <span>🏢 ${floorName}</span>
+                    <span style="font-size:12px; color:#27ae60;">
+                        여유: <b>${floorVacantCount}</b> / ${floorTotalCount}면
+                    </span>
+                </div>
+                <div class="grid-container"></div>
+            `;
+
+            const grid = section.querySelector('.grid-container');
+
+            if (displaySlots.length === 0) {
+                grid.innerHTML = '<p style="grid-column: 1/-1; text-align:center; color:#999; padding:15px; font-size:12px;">빈 자리가 없습니다.</p>';
+            } else {
+                displaySlots.forEach(slot => {
+                    const box = document.createElement('div');
+                    const isVacant = (slot.cellStatus === 'EMPTY');
+                    const isHandicap = slot.cellType === 'HANDICAP';
+
+                    const spotName = slot.cellName ? slot.cellName.replace(floorName, '').trim() : `${slot.cellId}`;
+
+                    box.className = `slot ${isVacant ? 'vacant' : 'occupied'} ${isHandicap ? 'type-handicap' : ''}`;
+                    box.innerHTML = `
+                        <div class="slot-name">${spotName || slot.cellName}</div>
+                        <div class="slot-tag">${isVacant ? '주차가능' : '주차중'}</div>
+                        ${isHandicap ? '<div style="font-size:8px; color:#2980b9;">장애인</div>' : ''}
+                    `;
+                    grid.appendChild(box);
+                });
+            }
+
+            view.appendChild(section);
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('refreshBtn').addEventListener('click', fetchGimpoParkingData);
+        document.getElementById('onlyVacantToggle').addEventListener('change', renderParkingMap);
+        document.getElementById('searchInput').addEventListener('input', renderParkingMap);
+
+        fetchGimpoParkingData();
+
+        // 60초 주기 자동 새로고침
+        if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+        autoRefreshTimer = setInterval(fetchGimpoParkingData, 60000);
+    });
+</script>
+</body>
+</html>
