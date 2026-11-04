@@ -346,10 +346,14 @@
             );
         }
 
-        const totalVacant = baseList.filter(item => item.cellStatus === 'EMPTY').length;
+        // 전체 빈자리 및 일반(장애인 제외) 빈자리 집계
+        const totalVacantSlots = baseList.filter(item => item.cellStatus === 'EMPTY');
+        const totalVacant = totalVacantSlots.length;
+        const totalVacantNormal = totalVacantSlots.filter(item => item.cellType !== 'HANDICAP').length;
         const totalOccupied = baseList.filter(item => item.cellStatus !== 'EMPTY').length;
 
-        document.getElementById('vacantCount').innerText = `${totalVacant}면`;
+        // 상단 카운터 업데이트: 전체면수 (일반 N)
+        document.getElementById('vacantCount').innerHTML = `${totalVacant}면 <span style="font-size: 13px; font-weight: normal; color: #555;">(일반 ${totalVacantNormal})</span>`;
         document.getElementById('occupiedCount').innerText = `${totalOccupied}면`;
 
         const floorGroups = {};
@@ -371,7 +375,11 @@
         sortedFloorNames.forEach(floorName => {
             const allFloorSlots = floorGroups[floorName];
             const floorTotalCount = allFloorSlots.length;
-            const floorVacantCount = allFloorSlots.filter(s => s.cellStatus === 'EMPTY').length;
+            
+            // 해당 층 빈자리 전체 및 일반(장애인 제외) 빈자리 수
+            const floorVacantSlots = allFloorSlots.filter(s => s.cellStatus === 'EMPTY');
+            const floorVacantCount = floorVacantSlots.length;
+            const floorVacantNormalCount = floorVacantSlots.filter(s => s.cellType !== 'HANDICAP').length;
 
             let displaySlots = allFloorSlots;
             if (onlyVacant) {
@@ -390,7 +398,8 @@
                 <div class="floor-header">
                     <span>🏢 ${floorName}</span>
                     <span style="font-size:12px; color:#27ae60;">
-                        여유: <b>${floorVacantCount}</b> / ${floorTotalCount}면
+                        여유: <b>${floorVacantCount}</b> / ${floorTotalCount}면 
+                        <span style="color:#555; font-weight:normal;">(일반 ${floorVacantNormalCount})</span>
                     </span>
                 </div>
                 <div class="grid-container"></div>
